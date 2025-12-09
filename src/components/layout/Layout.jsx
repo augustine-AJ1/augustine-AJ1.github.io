@@ -12,7 +12,7 @@ export function Sidebar({ activeTab, onTabChange }) {
     ];
 
     return (
-        <aside className="fixed left-0 top-0 h-full w-64 bg-[var(--bg-card)] border-r border-[var(--border)] p-4 flex flex-col transition-transform transform -translate-x-full md:translate-x-0 z-20">
+        <aside className="h-full w-64 bg-[var(--bg-card)] border-r border-[var(--border)] p-4 flex flex-col">
             <div className="mb-8 px-2 flex justify-between items-center">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] bg-clip-text text-transparent">
                     LifeManager
@@ -25,8 +25,8 @@ export function Sidebar({ activeTab, onTabChange }) {
                         key={item.id}
                         onClick={() => onTabChange(item.id)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === item.id
-                                ? 'bg-[var(--primary)] text-white shadow-md'
-                                : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)]'
+                            ? 'bg-[var(--primary)] text-white shadow-md'
+                            : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)]'
                             }`}
                     >
                         <span className="text-lg">{item.icon}</span>
@@ -81,7 +81,7 @@ export function AppLayout({ children, activeTab, onTabChange }) {
             )}
 
             {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-20 transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`fixed inset-y-0 left-0 z-20 transform transition-transform duration-300 md:fixed md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <Sidebar activeTab={activeTab} onTabChange={(tab) => { onTabChange(tab); setIsMobileMenuOpen(false); }} />
             </div>
 

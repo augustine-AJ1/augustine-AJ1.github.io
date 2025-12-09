@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Input } from '../../components/ui/Core';
 import { ExpenseService, AuthService } from '../../services/mockService';
 
-const CATEGORIES = ['Food', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Salary', 'Investment', 'Other'];
+const CATEGORIES = ['Food', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Investment', 'Other'];
+const INCOME_CATEGORIES = ['Salary', 'Freelance', 'Investment', 'Gift', 'Other'];
 
 export default function ExpenseTracker() {
     const [transactions, setTransactions] = useState([]);
@@ -22,7 +23,22 @@ export default function ExpenseTracker() {
         setLoading(true);
         const userId = AuthService.currentUser?.uid;
         if (userId) {
-            const data = await ExpenseService.getAll(userId);
+            let data = await ExpenseService.getAll(userId);
+
+            // Seed Mock Data if empty
+            if (data.length === 0) {
+                const mockData = [
+                    { id: '1', type: 'income', amount: 12500, category: 'Salary', description: 'Monthly Salary', date: new Date().toISOString() },
+                    { id: '2', type: 'expense', amount: 450, category: 'Utilities', description: 'DEWA Bill', date: new Date(Date.now() - 86400000).toISOString() },
+                    { id: '3', type: 'expense', amount: 120, category: 'Food', description: 'Grocery Run', date: new Date(Date.now() - 172800000).toISOString() },
+                    { id: '4', type: 'expense', amount: 35, category: 'Transport', description: 'Taxi to Mall', date: new Date(Date.now() - 259200000).toISOString() },
+                    { id: '5', type: 'expense', amount: 60, category: 'Entertainment', description: 'Cinema', date: new Date(Date.now() - 345600000).toISOString() },
+                ];
+                // In a real app we'd save these, here we just show them
+                data = mockData;
+                // Determine mock writes? Let's just set them to state for now.
+            }
+
             setTransactions(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
         }
         setLoading(false);
@@ -35,15 +51,16 @@ export default function ExpenseTracker() {
         const newTx = {
             userId: AuthService.currentUser?.uid,
             amount: parseFloat(form.amount),
-            category: form.type === 'income' ? 'Salary' : form.category,
+            category: form.category,
             description: form.description,
             type: form.type,
             date: new Date().toISOString()
         };
 
         await ExpenseService.create(newTx);
+        // Add to local state immediately for responsiveness
+        setTransactions(prev => [newTx, ...prev]);
         setForm({ ...form, amount: '', description: '' });
-        loadData();
     };
 
     const deleteTx = async (id) => {
@@ -102,7 +119,7 @@ export default function ExpenseTracker() {
                                             type="radio"
                                             name="type"
                                             checked={form.type === 'expense'}
-                                            onChange={() => setForm({ ...form, type: 'expense' })}
+                                            onChange={() => setForm({ ...form, type: 'expense', category: 'Food' })}
                                         /> Expense
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer">
@@ -110,7 +127,7 @@ export default function ExpenseTracker() {
                                             type="radio"
                                             name="type"
                                             checked={form.type === 'income'}
-                                            onChange={() => setForm({ ...form, type: 'income' })}
+                                            onChange={() => setForm({ ...form, type: 'income', category: 'Salary' })}
                                         /> Income
                                     </label>
                                 </div>
@@ -134,15 +151,16 @@ export default function ExpenseTracker() {
                                 />
                             </div>
 
-                            {form.type === 'expense' && (
-                                <select
-                                    className="w-full px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--bg-app)] text-[var(--text-main)]"
-                                    value={form.category}
-                                    onChange={e => setForm({ ...form, category: e.target.value })}
-                                >
-                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            )}
+                            <select
+                                className="w-full px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--bg-app)] text-[var(--text-main)]"
+                                value={form.category}
+                                onChange={e => setForm({ ...form, category: e.target.value })}
+                            >
+                                {form.type === 'expense'
+                                    ? CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
+                                    : INCOME_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
+                                }
+                            </select>
 
                             <Button type="submit" variant={form.type === 'income' ? 'primary' : 'danger'}>
                                 {form.type === 'income' ? 'Add Income' : 'Add Expense'}

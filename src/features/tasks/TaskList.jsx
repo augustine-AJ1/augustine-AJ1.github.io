@@ -48,7 +48,17 @@ export default function TaskList() {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newTask, setNewTask] = useState('');
+    const [newDueDate, setNewDueDate] = useState('');
     const [priority, setPriority] = useState('medium');
+    const [activeView, setActiveView] = useState('todo'); // 'todo', 'done', 'routine'
+
+    // Mock Daily Routine
+    const [routine, setRoutine] = useState([
+        { id: 'r1', title: 'Morning Workout (30 mins)', done: false },
+        { id: 'r2', title: 'Read 10 pages', done: false },
+        { id: 'r3', title: 'Drink 3L Water', done: false },
+        { id: 'r4', title: 'Plan tomorrow', done: false },
+    ]);
 
     useEffect(() => {
         loadTasks();
@@ -59,10 +69,17 @@ export default function TaskList() {
         const userId = AuthService.currentUser?.uid;
         if (userId) {
             const data = await TaskService.getAll(userId);
-            // Sort by status (todo first) then precedence or date
+            // Sort by Due Date (soonest first), then Priority
             const sorted = data.sort((a, b) => {
-                if (a.status === b.status) return 0;
-                return a.status === 'done' ? 1 : -1;
+                if (a.status === 'done' && b.status !== 'done') return 1;
+                if (a.status !== 'done' && b.status === 'done') return -1;
+
+                // If both todo, sort by due date
+                if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+                if (a.dueDate) return -1;
+                if (b.dueDate) return 1;
+
+                return 0;
             });
             setTasks(sorted);
         }
@@ -78,25 +95,29 @@ export default function TaskList() {
             title: newTask,
             status: 'todo',
             priority: priority,
+            dueDate: newDueDate || null,
             createdAt: new Date().toISOString()
         };
 
         await TaskService.create(task);
         setNewTask('');
+        setNewDueDate('');
         loadTasks();
     };
 
     const updateTask = async (id, updates) => {
-        // Optimistic update
         setTasks(tasks.map(t => t.id === id ? { ...t, ...updates } : t));
         await TaskService.update(id, updates);
-        // Reload to ensure sync? Or mostly fine.
     };
 
     const deleteTask = async (id) => {
         if (!window.confirm("Delete this task?")) return;
         setTasks(tasks.filter(t => t.id !== id));
         await TaskService.delete(id);
+    };
+
+    const toggleRoutine = (id) => {
+        setRoutine(routine.map(r => r.id === id ? { ...r, done: !r.done } : r));
     };
 
     return (
@@ -108,15 +129,22 @@ export default function TaskList() {
 
             {/* Add Task Form */}
             <Card className="p-4">
-                <form onSubmit={addTask} className="flex gap-2 items-end">
+                <form onSubmit={addTask} className="flex flex-col md:flex-row gap-4 items-end">
                     <Input
                         label="New Task"
                         value={newTask}
                         onChange={(e) => setNewTask(e.target.value)}
                         placeholder="What needs to be done?"
-                        className="flex-1"
+                        className="flex-1 w-full"
                     />
-                    <div className="flex flex-col gap-1 w-32">
+                    <Input
+                        label="Due Date"
+                        type="datetime-local"
+                        value={newDueDate}
+                        onChange={(e) => setNewDueDate(e.target.value)}
+                        className="w-full md:w-48"
+                    />
+                    <div className="flex flex-col gap-1 w-full md:w-32">
                         <label className="text-sm font-medium text-[var(--text-muted)]">Priority</label>
                         <select
                             value={priority}
@@ -128,29 +156,65 @@ export default function TaskList() {
                             <option value="high">High</option>
                         </select>
                     </div>
-                    <Button type="submit">Add Task</Button>
+                    <Button type="submit" className="w-full md:w-auto">Add Task</Button>
                 </form>
             </Card>
 
-            {/* Lists */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <section className="space-y-4">
-                    <h3 className="font-semibold text-[var(--text-muted)] uppercase text-sm tracking-wider">To Do</h3>
-                    {loading ? <p>Loading...</p> : (
-                        tasks.filter(t => t.status !== 'done').length === 0
-                            ? <p className="text-[var(--text-muted)] italic">No pending tasks.</p>
-                            : tasks.filter(t => t.status !== 'done').map(task => (
-                                <TaskItem key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
-                            ))
-                    )}
-                </section>
-
-                <section className="space-y-4">
-                    <h3 className="font-semibold text-[var(--text-muted)] uppercase text-sm tracking-wider">Completed</h3>
-                    {tasks.filter(t => t.status === 'done').map(task => (
-                        <TaskItem key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+            {/* Daily Routine Section */}
+            <Card title="Daily Routine">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {routine.map(r => (
+                        <div
+                            key={r.id}
+                            onClick={() => toggleRoutine(r.id)}
+                            className={`cursor-pointer p-3 rounded-lg border transition-all flex items-center gap-3 ${r.done ? 'bg-[var(--success)]/10 border-[var(--success)]' : 'bg-[var(--bg-app)] border-[var(--border)] hover:border-[var(--primary)]'}`}
+                        >
+                            <div className={`w-5 h-5 rounded flex items-center justify-center border ${r.done ? 'bg-[var(--success)] border-[var(--success)] text-white' : 'border-[var(--text-muted)]'}`}>
+                                {r.done && '✓'}
+                            </div>
+                            <span className={`text-sm font-medium ${r.done ? 'text-[var(--text-muted)] line-through' : 'text-[var(--text-main)]'}`}>{r.title}</span>
+                        </div>
                     ))}
-                </section>
+                </div>
+            </Card>
+
+            {/* Tabs */}
+            <div className="flex gap-4 border-b border-[var(--border)]">
+                <button
+                    onClick={() => setActiveView('todo')}
+                    className={`pb-2 px-1 font-medium text-sm transition-colors ${activeView === 'todo' ? 'text-[var(--primary)] border-b-2 border-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                >
+                    Pending ({tasks.filter(t => t.status !== 'done').length})
+                </button>
+                <button
+                    onClick={() => setActiveView('done')}
+                    className={`pb-2 px-1 font-medium text-sm transition-colors ${activeView === 'done' ? 'text-[var(--primary)] border-b-2 border-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                >
+                    Completed
+                </button>
+            </div>
+
+            {/* Task Lists */}
+            <div className="space-y-4 min-h-[300px]">
+                {loading ? <p>Loading...</p> : (
+                    <>
+                        {activeView === 'todo' && (
+                            tasks.filter(t => t.status !== 'done').length === 0
+                                ? <div className="text-center py-10 text-[var(--text-muted)]">No pending tasks. Great job!</div>
+                                : tasks.filter(t => t.status !== 'done').map(task => (
+                                    <TaskItem key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+                                ))
+                        )}
+
+                        {activeView === 'done' && (
+                            tasks.filter(t => t.status === 'done').length === 0
+                                ? <div className="text-center py-10 text-[var(--text-muted)]">No completed tasks yet.</div>
+                                : tasks.filter(t => t.status === 'done').map(task => (
+                                    <TaskItem key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+                                ))
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );

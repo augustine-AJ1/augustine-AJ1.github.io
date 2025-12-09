@@ -20,18 +20,33 @@ export function Button({ children, variant = 'primary', className = '', ...props
     );
 }
 
-/* Card Component */
+/* Card Component with Glassmorphism & Animation */
+import { motion } from 'framer-motion';
+
 export function Card({ children, className = '', title, actions, ...props }) {
     return (
-        <div className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-sm p-4 ${className}`} {...props}>
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className={`
+                bg-[var(--bg-card)]/80 backdrop-blur-md 
+                border border-[var(--border)]/50 
+                rounded-xl shadow-lg p-5 
+                hover:shadow-xl hover:border-[var(--primary)]/30 
+                transition-all duration-300
+                ${className}
+            `}
+            {...props}
+        >
             {(title || actions) && (
                 <div className="flex items-center justify-between mb-4">
-                    {title && <h3 className="text-lg font-semibold text-[var(--text-main)]">{title}</h3>}
+                    {title && <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight">{title}</h3>}
                     {actions && <div className="flex gap-2">{actions}</div>}
                 </div>
             )}
             {children}
-        </div>
+        </motion.div>
     );
 }
 
